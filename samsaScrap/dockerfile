@@ -1,0 +1,25 @@
+FROM node:alpine
+
+# Create a non-root user
+RUN adduser -D myuser
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+RUN npx playwright install
+
+# Change ownership of the app directory to the non-root user
+RUN chown -R myuser:myuser /app
+
+# Copy your test file(s) into the container
+COPY . .
+
+# Set executable permissions for Chromium binary
+RUN chmod +x /root/.cache/ms-playwright/chromium-1112/chrome-linux/chrome
+
+# Switch to the non-root user
+USER myuser
+
+# Run your commands
+CMD ["sh", "-c", "node tests/example.spec.js eu && node tests/example.spec.js halyk && node tests/example.spec.js home && node tests/example.spec.js jmart"]
