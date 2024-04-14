@@ -1,0 +1,9 @@
+{
+    "name": "scraper2",
+    "version": "1.0.0",
+    "description": "Scraping script 1",
+    "dependencies": {
+      "axios": "^0.21.1"
+    }
+  }
+  

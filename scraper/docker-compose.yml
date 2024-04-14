@@ -1,0 +1,12 @@
+version: '3'
+services:
+  scraper1:
+    build:
+      context: ./scraper1
+    volumes:
+      - ./output:/app/output
+  scraper2:
+    build:
+      context: ./scraper2
+    volumes:
+      - ./output:/app/output

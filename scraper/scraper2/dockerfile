@@ -1,0 +1,10 @@
+FROM node:alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY scraper2.js .
+
+CMD ["node", "scraper2.js"]
