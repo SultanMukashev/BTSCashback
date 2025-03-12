@@ -5,3 +5,9 @@ training_set
 test_set
 
 data
+DilnazDL/flickr30k_images
+Project1/input
+cuda
+runs
+working
+Project1/notebooks/attention_model_state.pth
