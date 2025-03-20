@@ -11,3 +11,4 @@ cuda
 runs
 working
 Project1/notebooks/attention_model_state.pth
+Project1/notebooks/image-captioning-with-attention-pytorch-NOT-PRETRAINED-accuracy-100-epoch.ipynb

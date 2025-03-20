@@ -1,0 +1,173 @@
+# **Documentation for image captioning project by Mukashev Sultan**
+## **Introduction**
+Image captioning is a fundamental task in computer vision and natural language processing that involves generating descriptive textual captions for given images. This task has significant applications in accessibility (e.g., helping visually impaired individuals interpret images), content-based image retrieval, and human-computer interaction. The challenge lies in effectively bridging the gap between the visual domain and natural language, requiring a deep understanding of both image content and linguistic structure.
+
+Traditional approaches relied on handcrafted features and template-based methods, which struggled to generalize across diverse images. However, with advancements in deep learning, neural network-based models—particularly encoder-decoder architectures with attention mechanisms—have achieved state-of-the-art performance in image captioning. These models utilize convolutional neural networks (CNNs) as encoders to extract visual features and recurrent neural networks (RNNs), such as long short-term memory (LSTM) or gated recurrent units (GRU), as decoders to generate captions sequentially.
+
+Attention mechanisms further enhance these models by dynamically focusing on different regions of an image while generating each word in the caption. This mimics human perception, where different parts of an image are considered depending on the context of the sentence being formed. The incorporation of attention enables more accurate and context-aware descriptions, making the generated captions more natural and relevant.
+
+In this project, we implement an image captioning model using an encoder-decoder architecture with attention. We utilize a pre-trained CNN (such as ResNet) as the encoder to extract high-level visual features and an LSTM-based decoder with an attention mechanism to generate captions. Our goal is to evaluate the effectiveness of this approach using standard benchmark datasets and assess its performance using quantitative metrics such as BLEU scores, as well as qualitative examples.
+##  **Description of model architecture**
+```
+Our image captioning model is based on an encoder-decoder architecture with an attention mechanism. This design is inspired by sequence-to-sequence models commonly used in machine translation, where the encoder extracts meaningful features from an input (in this case, an image) and the decoder generates a structured output (a caption) based on these features.
+```
+### **1. Encoder: Convolutional Neural Network (CNN)**  
+
+**Implementation:**  
+- We use a **ResNet-50** model as the **encoder** to extract **high-level visual features** from images.  
+- The final feature map (of shape `(batch_size, 2048, 7, 7)`) is reshaped into a sequence `(batch_size, 49, 2048)`, where each of the 49 vectors represents a localized region of the image.  
+- **Two configurations were tested:**  
+  1. **Non-pretrained ResNet-50:** All weights were initialized randomly.  
+  2. **Pretrained ResNet-50:** We used ImageNet-trained weights and froze the convolutional layers (`requires_grad_(False)`).  
+
+**Rationale:**  
+- CNNs, particularly ResNet, are known for their strong feature extraction capabilities.  
+- Initially, we experimented with a **randomly initialized ResNet-50**, but training from scratch resulted in **slower convergence** and required **more data** to generalize well.  
+- Switching to a **pretrained ResNet-50** significantly improved **training efficiency** and **caption quality**, as the model could leverage **existing feature representations** from ImageNet.  
+- Freezing the pretrained layers further reduced trainable parameters, lowering the risk of **overfitting** on small datasets.  
+
+---
+### **2. Attention Mechanism (Bahdanau Attention)**  
+
+**Implementation:**  
+- We use **Bahdanau attention**, which computes attention scores dynamically at each decoding step.  
+- The attention layer consists of three key transformations:  
+  - `W(hidden_state)`: Projects the decoder's hidden state.  
+  - `U(features)`: Projects the encoder output (image features).  
+  - `A(.)`: Computes attention scores using a non-linear transformation (tanh followed by a linear layer).  
+- Attention scores are **softmax-normalized** to generate weights that highlight the most relevant image regions for the current decoding step.  
+
+**Rationale:**  
+- Without attention, the decoder would rely only on a **fixed-size context vector** from the encoder, leading to information loss for long captions.  
+- Attention allows the decoder to focus on different parts of the image at each step, improving **alignment** between image regions and generated words.  
+- **Bahdanau attention** dynamically adjusts to each decoding step, unlike static **global averaging**, making it more effective for image captioning.  
+
+---
+
+### **3. Decoder: Recurrent Neural Network (LSTM with Attention)**  
+
+**Implementation:**  
+- The decoder is a **long short-term memory (LSTM)** network that generates captions word by word.  
+- At each step, the decoder takes as input:  
+  - The previously generated word’s embedding.  
+  - A **context vector** computed via the attention mechanism.  
+- The hidden state is updated via an LSTM cell:  
+  - `LSTMCell(embed_size + encoder_dim, decoder_dim)`: Combines the word embedding and context vector.  
+  - `fcn(drop(h))`: Produces the final word prediction from the hidden state.  
+- The decoder **initial hidden and cell states** are computed from the **mean-pooled encoder features**, ensuring they contain global image context.  
+
+**Rationale:**  
+- LSTMs handle **sequential dependencies** better than vanilla RNNs, making them ideal for language generation.  
+- The **concatenation of embeddings and attention-based context vectors** allows the decoder to use both **linguistic** and **visual** information.  
+- **Dropout (0.3 probability)** is used to prevent overfitting.  
+
+---
+## **Data Preprocessing Steps and Training Strategy**  
+
+### **1. Data Preprocessing**  
+
+#### **Dataset and DataLoader Initialization**  
+We use the **Flickr8k dataset**, which consists of images and corresponding captions. The dataset is preprocessed as follows:  
+
+1. **Image Preprocessing**:  
+   - Resize images to `226x226`, then randomly crop them to `224x224`.  
+   - Convert images to tensor format and normalize using ImageNet statistics:
+     ```
+     mean = (0.485, 0.456, 0.406)
+     std = (0.229, 0.224, 0.225)
+     ```
+   - These transformations help maintain consistency in image size and improve model convergence.  
+
+2. **Caption Preprocessing**:  
+   - Tokenize captions using `spaCy`.  
+   - Convert words to **integer indices** using a vocabulary built with a **minimum frequency threshold of 5**.  
+   - Append special tokens: `<SOS>` (start of sequence) and `<EOS>` (end of sequence).  
+   - Apply **padding** to align sequences in batches.  
+
+### **2. Training Strategy**  
+- The model is trained using **cross-entropy loss**, with **padding tokens ignored** to prevent them from influencing the loss.  
+- The optimizer is **Adam**, chosen for its adaptive learning rate and ability to handle sparse gradients.  
+- The learning rate is set to **3e-4**, which is a commonly used value for fine-tuning models with Adam.  
+- 25 epochs passed througout the training.
+- Captions are generated periodically along with pictures for qualitative evaluation every 100 instances.
+### **3. Evaluation**
+
+- Uses BLEU-4 score to measure caption quality.
+- Predictions are compared against ground-truth captions.
+---
+## **Results**
+### **1. Quantitative Evaluation Metrics**
+
+**We evaluate our image captioning model using the BLEU-4 score, which measures the similarity between generated and reference captions.**
+```
+Pretrained Weighted ResNet: BLEU-4 Score = 0.2184
+```
+```
+Non-Pretrained ResNet: BLEU-4 Score: 0.1696
+```
+
+**The model with a pretrained ResNet encoder performs significantly better, suggesting that transfer learning helps extract more meaningful image features.**
+
+### **2. Qualitative Examples**
+
+Below are some sample images and their corresponding generated captions:
+
+- **Not pretrained**
+![alt text](image-5.png)
+![alt text](image.png)
+![alt text](image-1.png)
+
+- **Pretrained**
+![alt text](image-2.png)
+![alt text](image-3.png)
+![alt text](image-4.png)
+
+---
+## Discussion on the Limitations of Our Approach and Potential Improvements
+
+### Limitations
+
+1. **Generalization Issues**  
+   - The model struggles with images that were not seen during pretraining, as seen in the generated captions for the "dog in grass" and "dog in water" images.  
+   - The pretrained model performs better on familiar images like the "girls," "boy," and "dog with stick" because they are similar to the training data distribution.
+
+2. **Overfitting to Training Data**  
+   - The pretrained model generates more accurate captions for images it has seen before but may fail to generalize well to unseen images.  
+   - This suggests that the model is relying on learned patterns rather than understanding visual context robustly.
+
+3. **Lack of Contextual Adaptability**  
+   - The model fails to recognize distinctions between similar objects in different contexts.  
+   - For example, it misidentifies the seal in the "dog in water" image, indicating that it relies on high-level similarities rather than detailed object recognition.
+
+4. **Attention Limitations**  
+   - The attention maps suggest that the model does not always focus on the most relevant parts of the image.  
+   - For non-pretrained images, the attention appears more scattered and inconsistent, leading to incorrect captions.
+
+### Potential Improvements
+
+1. **Fine-Tuning on a More Diverse Dataset**  
+   - Fine-tuning the model on a more diverse dataset, including images with variations in backgrounds, lighting, and objects, would help improve generalization.  
+   - Adding more images of water-based animals and different terrains could enhance robustness.
+
+2. **Data Augmentation**  
+   - Applying transformations like random cropping, rotation, and color changes during training can help the model generalize better.  
+   - Synthetic data generation using image editing techniques can expand the dataset.
+
+3. **Improved Attention Mechanisms**  
+   - Implementing an improved attention mechanism, such as Transformer-based attention rather than traditional LSTM-based attention, could enhance word-to-image alignment.  
+   - Using a vision-language pretraining approach like CLIP-based models could help improve object recognition.
+
+4. **Multi-Modal Learning**  
+   - Incorporating additional modalities such as text embeddings from external sources (e.g., descriptions from Wikipedia or related images) could provide contextual grounding.  
+   - Training on paired datasets with human-labeled attributes would improve interpretability.
+
+5. **Active Learning for Unseen Cases**  
+   - Implementing an active learning strategy where the model identifies its own uncertainties and requests human corrections could improve accuracy over time.  
+   - Semi-supervised learning techniques could also be employed to incorporate weakly labeled data.
+
+By addressing these limitations, the model can achieve better performance on unseen images while maintaining accuracy on known cases.
+
+---
+### **Conclusion**  
+
+This architecture effectively integrates **CNN-based image feature extraction**, **LSTM-based sequential language modeling**, and **Bahdanau attention for dynamic region focusing**. The **attention mechanism** ensures that each word is generated based on relevant image features, leading to **more accurate and natural captions**. The use of **pretrained ResNet** as an encoder and **frozen weights** accelerates training while maintaining strong performance. This architecture forms the foundation for modern image captioning systems and serves as a robust approach for converting visual content into meaningful textual descriptions. 
